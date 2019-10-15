@@ -223,6 +223,10 @@ void XGenExporter::createEntities(
                 project().get_factory_registrar<asr::Assembly>();
 
             const auto factory = assemblyFactories.lookup("xgen_patch_assembly");
+            if (!factory) {
+                MGlobal::displayError("XGenExporter: unable to find xgenseed plugin.");
+                return;
+            }
             assert(factory);
 
             AppleseedEntityPtr<renderer::Assembly> patchAssembly(

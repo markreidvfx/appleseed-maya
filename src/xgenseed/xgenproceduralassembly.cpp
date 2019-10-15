@@ -45,8 +45,13 @@
 #include "main/dllvisibility.h"
 
 // XGen headers.
-#include <XGen/XgRenderAPI.h>
-#include <XGen/XgRenderAPIUtils.h>
+#if MAYA_API_VERSION >= 201900
+    #include <xgen/src/xgrenderer/XgRenderAPI.h>
+    #include <xgen/src/xgrenderer/XgRenderAPIUtils.h>
+#else
+    #include <XGen/XgRenderAPI.h>
+    #include <XGen/XgRenderAPIUtils.h>
+#endif
 
 // Standard headers.
 #include <cstring>

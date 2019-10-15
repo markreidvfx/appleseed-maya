@@ -62,9 +62,9 @@ if(WIN32)
         "C:/Program Files/Autodesk/Maya2018"
   )
 endif(WIN32)
-
+message ("XGEN MAYA_BASE_DIR = ${MAYA_BASE_DIR}")
 # Look for the includes.
-find_path(XGEN_INCLUDE_DIR XGen/XgConfig.h
+find_path(XGEN_INCLUDE_DIR XGen/XgConfig.h xgen/src/xgcore/XgConfig.h
     HINTS ${MAYA_BASE_DIR}
     PATHS
       ENV_MAYA_LOCATION
@@ -74,6 +74,8 @@ find_path(XGEN_INCLUDE_DIR XGen/XgConfig.h
     plug-ins/xgen/include
   DOC "Maya Xgen headers location"
 )
+message ("GEN_INCLUDE_DIR = ${XGEN_INCLUDE_DIR}")
+
 
 # Look for the library.
 find_library(XGEN_LIBRARY AdskXGen

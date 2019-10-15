@@ -157,6 +157,7 @@ class Settings:
         self.platform = self.__get_required(tree, "platform")
         self.build_path = self.__get_required(tree, "build_path")
         self.bin_path = self.__get_required(tree, "bin_path")
+        self.xgenseed_bin_path = self.__get_required(tree, "xgenseed_bin_path")
         self.appleseed_bin_path = self.__get_required(tree, "appleseed_bin_path")
         self.appleseed_lib_path = self.__get_required(tree, "appleseed_lib_path")
         self.appleseed_shaders_path = self.__get_required(tree, "appleseed_shaders_path")
@@ -224,6 +225,7 @@ class Settings:
         print("  appleseed-maya version:          " + self.plugin_version)
         print("  Build path:                      " + self.build_path)
         print("  Path to appleseed-maya binaries: " + self.bin_path)
+        print("  Path to xgenseed binaries:       " + self.xgenseed_bin_path)
         print("  Path to appleseed binaries:      " + self.appleseed_bin_path)
         print("  Path to appleseed libraries:     " + self.appleseed_lib_path)
         print("  Path to appleseed shaders:       " + self.appleseed_shaders_path)
@@ -367,6 +369,12 @@ class PackageBuilder(object):
             os.path.join(self.settings.bin_path, "appleseedMaya" + plugin_ext),
             plugins_dir)
 
+        xgenseed_path = os.path.join(self.settings.xgenseed_bin_path, "xgenseed" + '.dylib')
+        # safe_make_directory( os.path.join(self.settings.package_output_path, "lib"))
+        if os.path.exists(xgenseed_path):
+            shutil.copy(xgenseed_path, plugins_dir)
+
+
     def build_final_zip_file(self):
         package_name = "appleseed-maya{0}-{1}-{2}".format(
             self.settings.maya_version,
@@ -503,6 +511,10 @@ class MacPackageBuilder(PackageBuilder):
             filename = os.path.basename(plugin_path)
             self.__set_library_id(plugin_path, filename)
 
+        for plugin_path in glob.glob(os.path.join(plugins_dir, "*.dylib")):
+            filename = os.path.basename(plugin_path)
+            self.__set_library_id(plugin_path, filename)
+
         python_plugin = os.path.join(self.settings.package_output_path, "scripts", "appleseed")
         for plugin_path in glob.glob(os.path.join(python_plugin, "*.so")):
             filename = os.path.basename(plugin_path)
@@ -519,6 +531,10 @@ class MacPackageBuilder(PackageBuilder):
 
         plugins_dir = os.path.join(self.settings.package_output_path, "plug-ins", self.settings.maya_version)
         for plugin_path in glob.glob(os.path.join(plugins_dir, "*.bundle")):
+            filename = os.path.basename(plugin_path)
+            self.__change_library_paths_in_binary(plugin_path)
+
+        for plugin_path in glob.glob(os.path.join(plugins_dir, "*.dylib")):
             filename = os.path.basename(plugin_path)
             self.__change_library_paths_in_binary(plugin_path)
 
@@ -551,6 +567,9 @@ class MacPackageBuilder(PackageBuilder):
             if lib_name == "Python":
                 maya_python = "@executable_path/../Frameworks/Python.framework/Versions/2.7/Python"
                 self.__change_library_path(bin_path, lib_path,  maya_python)
+
+            elif lib_name == "libAdskXGen.dylib":
+                self.__change_library_path(bin_path, lib_path, "/Applications/Autodesk/maya2019/plug-ins/xgen/lib/libAdskXGen.dylib")
 
             elif path_to_appleseed_lib == ".":
                 self.__change_library_path(bin_path, lib_path, "@loader_path/{0}".format(lib_name))

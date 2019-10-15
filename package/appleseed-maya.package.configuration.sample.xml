@@ -10,6 +10,9 @@
     <!-- The path to appleseed-maya binaries. -->
     <bin_path>/path/to/appleseed-maya/build/src/appleseedmaya</bin_path>
 
+    <!-- The path to xgenseed binary assembly. -->
+    <xgenseed_bin_path>/path/to/appleseed-maya/build/src/xgenseed</xgenseed_bin_path>
+
     <!-- The path to appleseed binaries. -->
     <appleseed_bin_path>$APPLESEED/bin</appleseed_bin_path>
 
