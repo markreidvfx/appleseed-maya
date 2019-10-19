@@ -33,6 +33,10 @@
 #include "appleseedmaya/attributeutils.h"
 #include "appleseedmaya/exporters/exporterfactory.h"
 
+// appleseed.foundation headers.
+#include "foundation/platform/sharedlibrary.h"
+#include "foundation/utility/searchpaths.h"
+
 // appleseed.renderer headers.
 #include "renderer/api/scene.h"
 
@@ -134,6 +138,28 @@ float getFps()
     return fps;
 }
 
+bool load_xgenseed_plugin(asr::Project& project)
+{
+    std::string plugin_path = "xgenseed";
+    plugin_path += asf::SharedLibrary::get_default_file_extension();
+    plugin_path = to_string(project.search_paths().qualify(plugin_path));
+
+    asr::Plugin* plugin = nullptr;
+    try
+    {
+        plugin = project.get_plugin_store().load_plugin(plugin_path.c_str());
+    }
+    catch (const asf::ExceptionCannotLoadSharedLib& e)
+    {
+    return false;
+    }
+
+    if (plugin)
+        return true;
+    else
+        return false;
+}
+
 }
 
 void XGenExporter::createEntities(
@@ -194,6 +220,11 @@ void XGenExporter::createEntities(
     xgen_args += asf::format(" -description {0}", descriptionName.asChar());
     xgen_args += asf::format(" -world {0};0;0;0;0;{0};0;0;0;0;{0};0;0;0;0;1", getUnitConversionFactor());
 
+    if (!load_xgenseed_plugin(project())) {
+        MGlobal::displayError("XGenExporter: unable to load xgenseed plugin.");
+        return;
+    }
+
     for (unsigned int i = 0, e = descriptionPath.childCount(); i < e; ++i)
     {
         MDagPath childDagPath;
@@ -217,7 +248,7 @@ void XGenExporter::createEntities(
             patchName = patchName.substring(0, patchName.length() - descriptionName.length() - 2);
 
             params.insert_path(
-                "parameters.xgen_args", asf::format(xgen_args, patchName.asChar()).c_str());
+                "xgen_args", asf::format(xgen_args, patchName.asChar()).c_str());
 
             const asr::AssemblyFactoryRegistrar& assemblyFactories =
                 project().get_factory_registrar<asr::Assembly>();

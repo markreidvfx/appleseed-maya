@@ -46,6 +46,10 @@ add_library (xgenseed SHARED
 )
 set_target_properties (xgenseed PROPERTIES PREFIX "")
 
+if (APPLE)
+    set_target_properties (xgenseed PROPERTIES SUFFIX ".so")
+endif ()
+
 
 #--------------------------------------------------------------------------------------------------
 # Preprocessor definitions.

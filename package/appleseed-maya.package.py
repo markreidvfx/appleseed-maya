@@ -369,8 +369,7 @@ class PackageBuilder(object):
             os.path.join(self.settings.bin_path, "appleseedMaya" + plugin_ext),
             plugins_dir)
 
-        xgenseed_path = os.path.join(self.settings.xgenseed_bin_path, "xgenseed" + '.dylib')
-        # safe_make_directory( os.path.join(self.settings.package_output_path, "lib"))
+        xgenseed_path = os.path.join(self.settings.xgenseed_bin_path, "xgenseed" + '.so')
         if os.path.exists(xgenseed_path):
             shutil.copy(xgenseed_path, plugins_dir)
 
@@ -511,7 +510,7 @@ class MacPackageBuilder(PackageBuilder):
             filename = os.path.basename(plugin_path)
             self.__set_library_id(plugin_path, filename)
 
-        for plugin_path in glob.glob(os.path.join(plugins_dir, "*.dylib")):
+        for plugin_path in glob.glob(os.path.join(plugins_dir, "*.so")):
             filename = os.path.basename(plugin_path)
             self.__set_library_id(plugin_path, filename)
 
@@ -534,7 +533,7 @@ class MacPackageBuilder(PackageBuilder):
             filename = os.path.basename(plugin_path)
             self.__change_library_paths_in_binary(plugin_path)
 
-        for plugin_path in glob.glob(os.path.join(plugins_dir, "*.dylib")):
+        for plugin_path in glob.glob(os.path.join(plugins_dir, "*.so")):
             filename = os.path.basename(plugin_path)
             self.__change_library_paths_in_binary(plugin_path)
 

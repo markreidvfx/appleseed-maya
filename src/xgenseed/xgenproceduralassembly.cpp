@@ -32,14 +32,22 @@
 // appleseed.renderer headers.
 #include "renderer/api/camera.h"
 #include "renderer/api/frame.h"
+#include "renderer/api/object.h"
 #include "renderer/api/project.h"
 #include "renderer/api/scene.h"
+#include "renderer/api/utility.h"
 
 // appleseed.foundation headers.
 #include "foundation/math/matrix.h"
+#include "foundation/math/scalar.h"
+#include "foundation/math/vector.h"
 #include "foundation/utility/api/specializedapiarrays.h"
 #include "foundation/utility/containers/dictionary.h"
 #include "foundation/utility/string.h"
+
+// random numbers
+#include "foundation/math/rng/distribution.h"
+#include "foundation/math/rng/mersennetwister.h"
 
 // appleseed.main headers.
 #include "main/dllvisibility.h"
@@ -57,6 +65,7 @@
 #include <cstring>
 #include <memory>
 #include <sstream>
+#include <iostream>
 
 namespace asf = foundation;
 namespace asr = renderer;
@@ -73,9 +82,12 @@ namespace
       public:
         XGenCallbacks(
             const asr::Project& project,
-            asr::Assembly&      assembly)
+            asr::Assembly&      assembly,
+            asr::CurveObject&   curve_object)
           : m_assembly(assembly)
           , m_params(assembly.get_parameters())
+          , m_curve_index(0)
+          , m_curve_object(curve_object)
         {
             add_xgen_params(project);
             compute_transform_sequence(assembly);
@@ -83,6 +95,7 @@ namespace
 
         void flush(const char* in_geom, PrimitiveCache* in_cache) override
         {
+            // std::cerr << "FLUSH!!\n";
             if (in_cache->get(PrimitiveCache::PrimIsSpline))
             {
                 flush_splines(in_geom, in_cache);
@@ -107,7 +120,103 @@ namespace
 
         void flush_splines(const char* in_geom, PrimitiveCache* in_cache)
         {
+            std::cerr << "flush_splines!!\n";
             RENDERER_LOG_DEBUG("XGenCallbacks: flush_splines called");
+
+            unsigned int numSamples = in_cache->get(PrimitiveCache::NumMotionSamples);
+            unsigned int shutterSize = in_cache->getSize(PrimitiveCache::Shutter);
+
+            unsigned int cacheCount = in_cache->get(PrimitiveCache::CacheCount);
+
+            std::cerr << "numSamples: " << numSamples << "\n";
+            std::cerr << "shutterSize: " << shutterSize << "\n";
+            std::cerr << "cacheCount: " << cacheCount << "\n";
+
+            const auto motion_segment_count = numSamples - 1;
+
+            const size_t ControlPointCount = 4;
+
+            unsigned int widthsSize = in_cache->getSize(PrimitiveCache::Widths);
+            float constantWidth = in_cache->get(PrimitiveCache::ConstantWidth);
+
+            unsigned int NumVertices_side = in_cache->getSize(PrimitiveCache::NumVertices);
+
+            unsigned int numPointsTotal = in_cache->getSize2( PrimitiveCache::NumVertices, 0 );
+
+
+            std::cerr <<  "widthsSize: "  << widthsSize << "\n";
+            std::cerr <<  "NumVertices_size: " <<  NumVertices_side << "\n";
+            std::cerr <<  "constantWidth: "  << widthsSize << "\n";
+            std::cerr <<  "numPointsTotal: " << numPointsTotal << "\n";
+            if (constantWidth <= 0)
+                constantWidth = .01;
+
+            asf::MersenneTwister rng;
+
+
+
+            for ( int i=0; i < numSamples; i++ ) {
+
+                // auto_release_ptr<CurveObject> curve_object
+                float *pos =(float *) in_cache->get(PrimitiveCache::Points, i);
+                const int *NumVertices = in_cache->get(PrimitiveCache::NumVertices, i);
+                float *cache_widths = (float*)in_cache->get(PrimitiveCache::Widths);
+                // for (int j =0; j < numVerts-2; j += ControlPointCount) {
+
+                for (int k = 0; k < cacheCount; k++) {
+                    int vert_count = *NumVertices;
+                    std::cerr << "    Curve: " << k  <<  " vert_count: " <<  vert_count << "\n";
+                    // float * pointPtr = pos;
+
+                    float rand_value = rand1(rng, 0.0f, 1.0f);
+
+
+                    for (int j = 0; j < vert_count-3; j++) {
+
+                        float *pointPtr = pos + (j * 3);
+                        float *w = cache_widths + j;
+
+                        asr::GVector3 points[ControlPointCount];
+                        asr::GScalar widths[ControlPointCount];
+                        asr::GScalar opacities[ControlPointCount];
+                        asf::Color3f colors[ControlPointCount];
+
+                        for (int p = 0; p < ControlPointCount; p++) {
+
+
+                            points[p] = asr::GVector3(pointPtr[0], pointPtr[1], pointPtr[2]);
+
+                            opacities[p] = 1;
+                            colors[p] = asf::Color3f(rand_value, rand_value, rand_value);
+
+                            //Add phantom points at the end
+                            if (j+p+1 < vert_count)
+                                pointPtr += 3;
+
+                            if (widthsSize > 0) {
+                                float width = *w;
+                                // if (width < 0) {
+                                //     width = 0;
+                                // }
+                                widths[p] = width;
+
+                                if (j + p > 0 && j+p+1 > vert_count - 1)
+                                    w++;
+
+                            } else {
+                                widths[p] = constantWidth;
+                            }
+                        }
+                        const asr::Curve3Type curve(&points[0], &widths[0], &opacities[0], &colors[0]);
+                        m_curve_object.push_curve3(curve);
+                    }
+
+                    NumVertices++;
+                    cache_widths += (widthsSize / cacheCount);
+                    pos+= (3*vert_count);
+                }
+                break;
+            }
         }
 
         void flush_cards(const char* in_geom, PrimitiveCache* in_cache)
@@ -264,6 +373,8 @@ namespace
         asr::Assembly&          m_assembly;
         asr::ParamArray         m_params;
         asr::TransformSequence  m_transform_sequence;
+        size_t                  m_curve_index;
+        asr::CurveObject&       m_curve_object;
 
         const asr::ParamArray& get_parameters() const
         {
@@ -365,15 +476,19 @@ namespace
             assert(assembly_instance != nullptr);
 
             // Compose all the transformation sequences.
+            int i = 0;
             while (assembly_instance)
             {
-                m_transform_sequence =
-                    assembly_instance->transform_sequence() * m_transform_sequence;
+                auto t = assembly_instance->transform_sequence();
+
+                m_transform_sequence = t * m_transform_sequence;
 
                 assembly_instance = static_cast<const asr::AssemblyInstance*>(
                     assembly_instance->get_parent());
+                break;
             }
         }
+
     };
 
     class XGenPatchAssembly
@@ -394,7 +509,6 @@ namespace
         {
             return Model;
         }
-
         bool do_expand_contents(
             const asr::Project&     project,
             const asr::Assembly*    parent,
@@ -405,6 +519,7 @@ namespace
             try
             {
                 xgen_args = get_parameters().get("xgen_args");
+                std::cerr<< "xgen_args: "  << xgen_args << "\n";
             }
             catch (const asf::ExceptionDictionaryKeyNotFound&)
             {
@@ -412,7 +527,18 @@ namespace
                 return false;
             }
 
-            XGenCallbacks xgen_callbacks(project, *this);
+            std::string obj_name =  asf::format("curve_{0}", get_name());
+
+            auto curve_object = asf::auto_release_ptr<asr::CurveObject>(
+                asr::CurveObjectFactory().create(
+                    obj_name.c_str(),
+                    asr::ParamArray()));
+
+            curve_object->push_basis(asf::CurveBasis::BSpline);
+
+            XGenCallbacks xgen_callbacks(project, *this, curve_object.ref());
+
+
             std::unique_ptr<PatchRenderer> patch_renderer(
                 PatchRenderer::init(&xgen_callbacks, xgen_args.c_str()));
 
@@ -422,13 +548,13 @@ namespace
                 return false;
             }
 
-            bbox bbox;
+            bbox face_bbox;
             unsigned int face_id;
             bool success = true;
 
-            while (patch_renderer->nextFace(bbox, face_id))
+            while (patch_renderer->nextFace(face_bbox, face_id))
             {
-                if (isEmpty(bbox))
+                if (isEmpty(face_bbox))
                     continue;
 
                 std::unique_ptr<FaceRenderer> face_renderer(FaceRenderer::init(
@@ -446,6 +572,23 @@ namespace
                     success = false;
                 }
             }
+
+            objects().insert(
+                asf::auto_release_ptr<asr::Object>(curve_object));
+
+
+
+            asf::StringDictionary materials;
+            materials.insert("default","initialShadingGroup_material");
+
+            object_instances().insert(
+                asr::ObjectInstanceFactory::create(
+                    (obj_name+"_inst").c_str(), // Instance name.
+                    asr::ParamArray(),
+                    obj_name.c_str(), // Object name.
+                    asf::Transformd::identity(),
+                    materials));
+
 
             return success;
         }
