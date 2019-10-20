@@ -120,7 +120,7 @@ namespace
 
         void flush_splines(const char* in_geom, PrimitiveCache* in_cache)
         {
-            std::cerr << "flush_splines!!\n";
+            // std::cerr << "flush_splines!!\n";
             RENDERER_LOG_DEBUG("XGenCallbacks: flush_splines called");
 
             unsigned int numSamples = in_cache->get(PrimitiveCache::NumMotionSamples);
@@ -128,9 +128,9 @@ namespace
 
             unsigned int cacheCount = in_cache->get(PrimitiveCache::CacheCount);
 
-            std::cerr << "numSamples: " << numSamples << "\n";
-            std::cerr << "shutterSize: " << shutterSize << "\n";
-            std::cerr << "cacheCount: " << cacheCount << "\n";
+            // std::cerr << "numSamples: " << numSamples << "\n";
+            // std::cerr << "shutterSize: " << shutterSize << "\n";
+            // std::cerr << "cacheCount: " << cacheCount << "\n";
 
             const auto motion_segment_count = numSamples - 1;
 
@@ -143,11 +143,11 @@ namespace
 
             unsigned int numPointsTotal = in_cache->getSize2( PrimitiveCache::NumVertices, 0 );
 
-
-            std::cerr <<  "widthsSize: "  << widthsSize << "\n";
-            std::cerr <<  "NumVertices_size: " <<  NumVertices_side << "\n";
-            std::cerr <<  "constantWidth: "  << widthsSize << "\n";
-            std::cerr <<  "numPointsTotal: " << numPointsTotal << "\n";
+            //
+            // std::cerr <<  "widthsSize: "  << widthsSize << "\n";
+            // std::cerr <<  "NumVertices_size: " <<  NumVertices_side << "\n";
+            // std::cerr <<  "constantWidth: "  << widthsSize << "\n";
+            // std::cerr <<  "numPointsTotal: " << numPointsTotal << "\n";
             if (constantWidth <= 0)
                 constantWidth = .01;
 
@@ -165,7 +165,7 @@ namespace
 
                 for (int k = 0; k < cacheCount; k++) {
                     int vert_count = *NumVertices;
-                    std::cerr << "    Curve: " << k  <<  " vert_count: " <<  vert_count << "\n";
+                    // std::cerr << "    Curve: " << k  <<  " vert_count: " <<  vert_count << "\n";
                     // float * pointPtr = pos;
 
                     float rand_value = rand1(rng, 0.0f, 1.0f);
@@ -485,6 +485,8 @@ namespace
 
                 assembly_instance = static_cast<const asr::AssemblyInstance*>(
                     assembly_instance->get_parent());
+
+                // not sure why the second one segfaults;
                 break;
             }
         }
@@ -579,7 +581,8 @@ namespace
 
 
             asf::StringDictionary materials;
-            materials.insert("default","initialShadingGroup_material");
+            materials.insert("default",   get_parameters()
+                .get_optional<std::string>("material", "initialShadingGroup_material"));
 
             object_instances().insert(
                 asr::ObjectInstanceFactory::create(

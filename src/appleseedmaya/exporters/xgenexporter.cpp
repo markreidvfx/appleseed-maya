@@ -88,7 +88,23 @@ XGenExporter::~XGenExporter()
 
 void XGenExporter::createExporters(const AppleseedSession::IExporterFactory& exporter_factory)
 {
-    // todo: implement this.
+    const unsigned int instanceNumber = dagPath().isInstanced() ? dagPath().instanceNumber() : 0;
+
+    MStatus status;
+    MFnDependencyNode depNodeFn(node(), &status);
+    MPlug plug = depNodeFn.findPlug("instObjGroups", false, &status);
+    plug = plug.elementByLogicalIndex(instanceNumber);
+
+    if (plug.isConnected())
+    {
+        // We have only one material for the mesh.
+        MPlugArray connections;
+        plug.connectedTo(connections, false, true);
+        MObject shadingEngine = connections[0].node();
+        exporter_factory.createShadingEngineExporter(shadingEngine);
+        depNodeFn.setObject(shadingEngine);
+        m_materialName = depNodeFn.name() + MString("_material");
+    }
 }
 
 namespace
@@ -244,6 +260,9 @@ void XGenExporter::createEntities(
             params.clear();
             params.insert("plugin_name", "xgenseed");
 
+            if (m_materialName.length())
+                params.insert("material", m_materialName.asChar());
+
             // Remove the description name from the patch name.
             patchName = patchName.substring(0, patchName.length() - descriptionName.length() - 2);
 
@@ -255,7 +274,7 @@ void XGenExporter::createEntities(
 
             const auto factory = assemblyFactories.lookup("xgen_patch_assembly");
             if (!factory) {
-                MGlobal::displayError("XGenExporter: unable to find xgenseed plugin.");
+                MGlobal::displayError("XGenExporter: unable to find xgen_patch_assembly.");
                 return;
             }
             assert(factory);

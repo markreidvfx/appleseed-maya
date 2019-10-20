@@ -69,6 +69,7 @@ class XGenExporter
       AppleseedSession::SessionMode                     sessionMode);
 
     renderer::TransformSequence                     m_transformSequence;
+    MString                                         m_materialName;
     AppleseedEntityPtr<renderer::Assembly>          m_assembly;
     AppleseedEntityPtr<renderer::AssemblyInstance>  m_assemblyInstance;
 
