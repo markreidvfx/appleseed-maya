@@ -26,16 +26,107 @@
 # THE SOFTWARE.
 #
 
+# Standard imports.
+import os
+
 # XGen imports.
 import xgenm as xg
+import xgenm.xmaya.xgmExternalAPI as xgmExternalAPI
 
 # Maya imports.
+import maya
 import maya.cmds as mc
+import maya.mel as mel
 
 # appleseedMaya imports.
 import xgenseedutil
+from logger import logger
 import xgenseedui
 
+def exportPalettes():
+    if not mc.pluginInfo("xgenToolkit", query=True, loaded=True):
+        return
+
+    palettes = mc.ls(exactType="xgmPalette")
+    if not palettes:
+        return
+
+    mel.eval('xgmPreview();xgmPreRendering();')
+
+def exportPatches(startFrame=None, endFrame=None):
+
+    if not mc.pluginInfo("xgenToolkit", query=True, loaded=True):
+        return
+
+    palettes = mc.ls(exactType="xgmPalette")
+    if not palettes:
+        return
+
+    if not mc.pluginInfo("AbcExport", query=True, loaded=True):
+        mc.loadPlugin("AbcExport")
+
+    currentScenePath = mc.file(query=True, sceneName=True)
+    if currentScenePath:
+        dirPath = os.path.dirname(currentScenePath)
+        sceneName, ext = os.path.splitext(os.path.basename(currentScenePath))
+    else:
+        xg.XGError(maya.stringTable['y_xgDescriptionEditor.kYouMustSaveTheSceneFirst'])
+        return
+
+    # TODO: Handle motion blur samples properly
+    if startFrame is None:
+        startFrame = mc.currentTime(query=True)
+
+    if endFrame is None:
+        endFrame = startFrame
+
+    jobCmdBase = ' -frameRange {} {}'.format(startFrame, endFrame)
+    jobCmdBase +=' -uvWrite -attrPrefix xgen -worldSpace'
+
+    jobs = []
+    for palette in palettes:
+
+        filename = "{}/{}__{}.abc".format(dirPath, sceneName, xgmExternalAPI.encodeNameSpace(str(palette)))
+        filename = filename.replace('__ns__', '__')
+
+        descShapes = mc.listRelatives(palette, type="xgmDescription", allDescendents=True)
+
+        jobCmd = jobCmdBase
+        exportedMeshes = set()
+
+        # find and export all the patch meshes used by the palette
+        for shape in descShapes:
+            descriptions = mc.listRelatives(shape, parent=True)
+            if not descriptions:
+                continue
+
+            patches = xg.descriptionPatches(descriptions[0])
+            for patch in patches:
+                cmd = 'xgmPatchInfo -p "{}" -g'.format(patch)
+                mesh = mel.eval(cmd)
+
+                meshFullName = mc.ls(mesh, l=True)
+                if not meshFullName:
+                    continue
+
+                root = meshFullName[0]
+                # don't export the same mesh multiple times
+                if root in exportedMeshes:
+                    continue
+
+                exportedMeshes.add(root)
+                jobCmd += " -root {}".format(root)
+
+        jobCmd += " -stripNamespaces -file '{}'".format(filename)
+        jobs.append(jobCmd)
+
+    cmd = "AbcExport -v -j "
+    for job in jobs:
+        cmd += '"{}"'.format(job)
+
+    logger.info("XGen exporting abc patches")
+    logger.info(cmd)
+    mel.eval(cmd)
 
 def appleseedExportFrame(self, frame, objFilename):
     '''Export a single appleseed archive frame.'''

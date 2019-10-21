@@ -36,6 +36,9 @@ def createRenderMelProcedures():
         {
             python("import appleseedMaya.renderGlobals");
             python("appleseedMaya.renderGlobals.createGlobalNodes()");
+            python("import appleseedMaya.xgenseed");
+            python("appleseedMaya.xgenseed.exportPalettes()");
+            python("appleseedMaya.xgenseed.exportPatches()");
             appleseedRender -w $width -h $height -c $camera;
         }
         '''
@@ -46,6 +49,9 @@ def createRenderMelProcedures():
         {
             python("import appleseedMaya.renderGlobals");
             python("appleseedMaya.renderGlobals.createGlobalNodes()");
+            python("import appleseedMaya.xgenseed");
+            python("appleseedMaya.xgenseed.exportPalettes()");
+            python("appleseedMaya.xgenseed.exportPatches()");
             appleseedRender -batch $options;
         }
         '''
@@ -64,6 +70,9 @@ def createRenderMelProcedures():
         {
             python("import appleseedMaya.renderGlobals");
             python("appleseedMaya.renderGlobals.createGlobalNodes()");
+            python("import appleseedMaya.xgenseed");
+            python("appleseedMaya.xgenseed.exportPalettes()");
+            python("appleseedMaya.xgenseed.exportPatches()");
             appleseedProgressiveRender -w $width -h $height -c $camera -action "render";
         }
         '''
@@ -74,6 +83,9 @@ def createRenderMelProcedures():
         {
             python("import appleseedMaya.renderGlobals");
             python("appleseedMaya.renderGlobals.createGlobalNodes()");
+            python("import appleseedMaya.xgenseed");
+            python("appleseedMaya.xgenseed.exportPalettes()");
+            python("appleseedMaya.xgenseed.exportPatches()");
             appleseedProgressiveRender -w $resolutionX -h $resolutionY -c $camera -action "start";
         }
         '''
